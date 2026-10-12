@@ -70,14 +70,19 @@ On this 4-core/8-thread box the 4 → 8 change is nearly flat (fork pool: 2.0 s 
 n=4, 1.9 s at n=8); the default matters most on machines with more *physical*
 cores, and the preference is the escape hatch.
 
+### 4. Edge hints on the worker pool
+
+The edge-hint pre-pass (`_register_edge_hints`) walks every unique face's
+boundary to space a cylinder/cone face's straight edges like its interior grid.
+It was the largest remaining single-threaded block: **89 s**. It now runs on the
+same fork pool as tessellation (batched per IPC message, since each face's own
+work is tiny), with the identical sequential/spawn fallbacks.
+
+The merge is a plain min over faces, so split across workers it produces the
+same dict: on this file **57,137 keys, identical**, at **24.2 s** (memory-bound
+on 4 physical cores, not IPC-bound).
+
 ## Known remaining hotspots
-
-### Edge hints (~94 s, serial)
-
-`_register_edge_hints` walks every face's boundary a second time, before
-tessellation, to record curve types for edges that the mesh would otherwise
-draw straight. It is the largest remaining single-threaded block, and it
-parallelises the same way tessellation does.
 
 ### Known remaining: pathological faces
 

@@ -84,5 +84,38 @@ class WorkerCountTests(unittest.TestCase):
         self.assertEqual(W.worker_count(8, 0), 1)
 
 
+@unittest.skipUnless(_HAVE_CORE, "core (NumPy) not importable")
+class EdgeHintJobTests(unittest.TestCase):
+    def test_face_edge_hints_of_missing_face_is_empty(self):
+        class Stub:
+            def get(self, ref):
+                return None
+
+        self.assertEqual(C._face_edge_hints(Stub(), 1, 0.05, None), {})
+
+    def test_edge_hints_job_reuses_shared_sf_without_parsing(self):
+        """Like the tessellation job: a forked worker must use the inherited
+        `sf`, not parse the file again."""
+        class Stub:
+            def get(self, ref):
+                return None
+
+        def boom(_path):
+            raise AssertionError("edge-hint worker re-parsed the file")
+
+        orig = C.parse_file
+        C.parse_file = boom
+        try:
+            state = {"path": "/nonexistent/never.step", "angle_scale": 1.0,
+                     "deflection": 0.05, "max_edge": None, "debug": False,
+                     "sf": Stub()}
+            run = C._edge_hints_job(state)
+            hints, msgs, unsup = run([1, 2, 3])
+            self.assertEqual(hints, {})
+            self.assertEqual(msgs, [])
+        finally:
+            C.parse_file = orig
+
+
 if __name__ == "__main__":
     unittest.main()

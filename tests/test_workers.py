@@ -66,5 +66,23 @@ class ForkSupportTests(unittest.TestCase):
         self.assertEqual([i for i, _ in got], [0, 1])
 
 
+@unittest.skipUnless(_HAVE_CORE, "core (NumPy) not importable")
+class WorkerCountTests(unittest.TestCase):
+    def test_auto_uses_every_cpu_capped(self):
+        n = W.worker_count(None, None)
+        self.assertEqual(n, max(1, min(os.cpu_count() or 2, W.MAX_WORKERS)))
+
+    def test_requested_value_wins(self):
+        self.assertEqual(W.worker_count(3, 100), 3)
+
+    def test_zero_or_negative_means_auto(self):
+        self.assertEqual(W.worker_count(0, None), W.worker_count(None, None))
+        self.assertEqual(W.worker_count(-5, None), W.worker_count(None, None))
+
+    def test_clamped_to_job_count(self):
+        self.assertEqual(W.worker_count(8, 2), 2)
+        self.assertEqual(W.worker_count(8, 0), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
